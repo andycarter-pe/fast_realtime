@@ -44,13 +44,13 @@ RUN rm -rf /var/lib/apt/lists/*
 ENV PATH /opt/conda/bin:$PATH
 
 # Clone the desired GitHub repository
-RUN git clone https://github.com/andycarter-pe/fast_realtime_update.git /fast_realtime_update
+RUN git clone https://github.com/andycarter-pe/fast_realtime.git /fast_realtime
 
 # Create necessary directories
-RUN mkdir /global_input /model_input /model_output
+#RUN mkdir /global_input /model_input /model_output
 
 # Set working directory
-WORKDIR /fast_realtime_update/src
+WORKDIR /fast_realtime/src
 
 # Default command to run when container starts
 CMD [ "bash" ]
