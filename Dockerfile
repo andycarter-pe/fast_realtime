@@ -17,7 +17,7 @@
 # License: BSD 3-Clause License
 # ------------------------------------------------------------------------
 
-# Example use: docker run -it -v E:\ras-docker-20240908:/ras/Linux_RAS_v65/mac-test civileng127/ras_v65:v0 /bin/bash -c "cd /ras/Linux_RAS_v65/mac-test && RasUnsteady sample_ras_name.p01,hdf.tmp x01"
+# docker run -e DB_PASSWORD='enter_password_here' -v ~/.aws:/root/.aws civileng127/fast-update:20250504
 
 # Use the Miniconda base image from Continuum
 FROM continuumio/miniconda3:latest
@@ -58,4 +58,5 @@ RUN git clone https://github.com/andycarter-pe/fast_realtime.git /fast_realtime 
 WORKDIR /fast_realtime/src
 
 # Default command to run when container starts
-CMD [ "bash" ]
+#CMD [ "bash" ]
+CMD ["python", "fast_realtime_update.py", "-c", "config_realtime_linux.ini"]
