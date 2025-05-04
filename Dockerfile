@@ -32,7 +32,10 @@ RUN conda install python=3.8.12 -y
 RUN conda install gdal -y
 
 # Install python libraries via pip
-RUN pip install geopandas==0.12.1 boto3==1.28.80 xarray s3fs sqlalchemy psycopg2-binary tqdm numpy shapely
+RUN pip install geopandas==0.12.1 boto3==1.28.80 xarray s3fs sqlalchemy psycopg2-binary tqdm numpy shapely geoalchemy2
+
+# Making sure xarray has netcdf4 backend engines
+RUN pip install netcdf4 h5netcdf
 
 # Clean up conda cache to reduce image size
 RUN conda clean -a
@@ -44,7 +47,9 @@ RUN rm -rf /var/lib/apt/lists/*
 ENV PATH /opt/conda/bin:$PATH
 
 # Clone the desired GitHub repository
-RUN git clone https://github.com/andycarter-pe/fast_realtime.git /fast_realtime
+# Step 8 (modified slightly to force re-run)
+RUN git clone https://github.com/andycarter-pe/fast_realtime.git /fast_realtime && \
+    echo "Rebuilt at $(date)" > /fast_realtime/last_built.txt
 
 # Create necessary directories
 #RUN mkdir /global_input /model_input /model_output
