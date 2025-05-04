@@ -135,6 +135,10 @@ def fn_push_to_s3(str_config_file_path, b_print_output):
             'password': section.get('password', ''),
             'port': section.get('port', '5432')
         }
+        
+        # Overwrite with environment variable if password is 'xxx'
+        if db_params['password'] == 'xxx':
+            db_params['password'] = os.environ.get('DB_PASSWORD', '')
     else:
         raise KeyError("Missing [database] section in config file")
         

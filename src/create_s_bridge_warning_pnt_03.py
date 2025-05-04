@@ -171,6 +171,10 @@ def fn_create_s_bridge_warning_pnt(str_config_file_path, b_print_output):
             'user': section.get('username', ''),
             'password': section.get('password', '')
         }
+        
+        # Overwrite with environment variable if password is 'xxx'
+        if dict_db_params['password'] == 'xxx':
+            dict_db_params['password'] = os.environ.get('DB_PASSWORD', '')
     else:
         raise KeyError("Missing [database] section in config file")
         

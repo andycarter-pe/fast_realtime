@@ -108,6 +108,10 @@ def fn_run_sql_udpate_dynamic_tables(str_config_file_path, b_print_output):
             'user': section.get('username', ''),
             'password': section.get('password', '')
         }
+        
+        # Overwrite with environment variable if password is 'xxx'
+        if db_config['password'] == 'xxx':
+            db_config['password'] = os.environ.get('DB_PASSWORD', '')
     else:
         raise KeyError("Missing [database] section in config file")
         

@@ -83,6 +83,10 @@ def fn_populate_t_flow_forecast(str_config_file_path, b_print_output):
         host     = section.get('host', '')
         port     = section.get('port', '')
         dbname   = section.get('dbname', '')
+        
+        # Use environment variable if password is set as 'xxx' or blank
+        if password in ('', 'xxx'):
+            password = os.environ.get('DB_PASSWORD', '')
     else:
         raise KeyError("Missing [database] section in config file")
 
