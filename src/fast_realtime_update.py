@@ -49,12 +49,12 @@ def fn_str_to_bool(value):
 
 
 # +++++++++++++++++++++++++++++
-def fn_fast_realtime_update(str_config_file_path): 
+def fn_fast_realtime_update(str_config_file_path, b_print_output): 
 
     b_use_nwm = True # use the NWM s3 bucket, if False use KISTERs data assimilation   
 
     # To supress the printing of Step output text
-    b_print_output = False
+    #b_print_output = False
     
     # supress all warnings
     warnings.filterwarnings("ignore", category=UserWarning )
