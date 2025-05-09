@@ -158,7 +158,7 @@ def fn_push_to_s3(str_config_file_path, b_print_output):
     gdf_s_bridge_warning_pnt = fn_get_geodataframe_from_postgresql(str_bridge_table_name, db_params,'geometry')
     gdf_s_flood_merge_ar = fn_get_geodataframe_from_postgresql(str_inundation_table_name, db_params,'geometry')
     
-    # Even if there is no polygons, this shoold have one row with model_run_time
+    # Even if there are no polygons, this shold have one row with model_run_time
     str_model_run_time = gdf_s_flood_merge_ar.iloc[0]['model_run_time']
     
     geometry_fake_area = Polygon([
@@ -170,6 +170,8 @@ def fn_push_to_s3(str_config_file_path, b_print_output):
     
     if gdf_s_flood_merge_ar.iloc[0]['geometry'] is None:
         gdf_s_flood_merge_ar.at[gdf_s_flood_merge_ar.index[0], 'geometry'] = geometry_fake_area
+        gdf_s_flood_merge_ar['is_real'] = 0
+        gdf_s_flood_merge_ar['is_real'] = gdf_s_flood_merge_ar['is_real'].astype(int)
         
     # -- If empty, create a AGOL placeholder for road lines
     if gdf_s_flood_road_trim_ln.empty:
@@ -197,7 +199,7 @@ def fn_push_to_s3(str_config_file_path, b_print_output):
     # -- If empty, create a AGOL placeholder for bridge warning points
     if gdf_s_bridge_warning_pnt.empty:
         
-        geometry_fake_point = Point(-97.7431, 30.2672)
+        geometry_fake_point = Point(-97.793186, 30.547194)
     
         # Define placeholder attributes
         dict_empty_bridge_data = {
@@ -212,7 +214,7 @@ def fn_push_to_s3(str_config_file_path, b_print_output):
             'model_run_time': [str_model_run_time],
             'max_wse': [None],
             'min_dist_to_low_ch': [None],
-            'is_overtop': [False],
+            'is_overtop': ['0'],
             'depth_array': [[ ]],
             'url': [''],
             'geometry': [geometry_fake_point]

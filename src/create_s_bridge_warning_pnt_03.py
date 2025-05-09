@@ -233,8 +233,9 @@ def fn_create_s_bridge_warning_pnt(str_config_file_path, b_print_output):
         ).round(1)
         
         # create a coloumn named 'is_overtop'... from gdf_flow_points, if max_wse >= min_overtop ...True ... else False
-        gdf_flow_points['is_overtop'] = gdf_flow_points['max_wse'] >= gdf_flow_points['min_overtop']
-        
+        # for AGOL geoJSON, this has to be an integer
+        gdf_flow_points['is_overtop'] = (gdf_flow_points['max_wse'] >= gdf_flow_points['min_overtop']).astype(int).astype(object)
+
         # For each row in gdf_flow_points, within wse_array, if value is nan, set it to 'min_ground'
         gdf_flow_points['wse_array'] = gdf_flow_points.apply(fn_replace_nan_with_min_ground, axis=1)
         
@@ -271,9 +272,11 @@ def fn_create_s_bridge_warning_pnt(str_config_file_path, b_print_output):
         print('  -- No bridge warnings to report')
         # create an empty geodataframe of bridge points that matches a populated dataset of gdf_flow_points
         gdf_flow_points = gpd.GeoDataFrame(columns=[
-        'uuid_bridge', 'geometry', 'min_low_ch', 'min_overtop',
-        'min_ground', 'max_wse', 'min_dist_to_low_ch',
-        'is_overtop', 'depth_array', 'model_run_time', 'url'], geometry='geometry', crs='EPSG:4326')
+        'geometry', 'BRDG_ID', 'uuid_bridge', 'min_low_ch',
+        'min_ground', 'min_overtop', 'min_overtop', 'name',
+        'ref', 'nhd_name', 'model_run_time', 'max_wse',
+        'min_dist_to_low_ch', 'is_overtop', 'depth_array',
+        'url'], geometry='geometry', crs='EPSG:4326')
     
     print('  -- Uploading bridge points to PostgreSQL')
     
@@ -293,7 +296,7 @@ def fn_create_s_bridge_warning_pnt(str_config_file_path, b_print_output):
         gdf_flow_points.to_postgis(table_name, conn, if_exists='replace', index=False)
         
     print('  -- Bridge points successfully uploaded')
-    
+
 # .........................................................
 
 

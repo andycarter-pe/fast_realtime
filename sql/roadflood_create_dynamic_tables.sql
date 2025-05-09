@@ -45,18 +45,35 @@ FROM flows_with_array;
 Method to comment out multiple rows
 */
 
-/*
+
 -- temporary fake flow for testing
 UPDATE t_flow_per_nextgen
 SET
-   flow_array[14] = 925,
-   flow_array[15] = 1850,
-   flow_array[16] = 925,
-   max_flow = 1850,
-   max_hour = 15;
+   flow_array[1] = 359,
+   flow_array[2] = 617,
+   flow_array[3] = 876,
+   flow_array[4] = 1134,
+   flow_array[5] = 1393,
+   flow_array[6] = 1651,
+   flow_array[7] = 4200,
+   flow_array[8] = 1745,
+   flow_array[9] = 1389,
+   flow_array[10] = 1034,
+   flow_array[11] = 678,
+   flow_array[12] = 323,
+   flow_array[13] = 100,
+   flow_array[14] = 100,
+   flow_array[15] = 100,
+   flow_array[16] = 100,
+   flow_array[17] = 100,
+   flow_array[18] = 0,
+   max_flow = 4200,
+   max_hour = 7;
+   
 -- end temp
-*/
 
+
+-- select the appropriate flood area polygons
 DROP TABLE IF EXISTS s_selected_flood_ar;
 
 CREATE TABLE s_selected_flood_ar AS
@@ -77,6 +94,8 @@ LEFT JOIN LATERAL (
     LIMIT 1
 ) s ON true;
 
+
+-- select the appropriate flooded road lines
 DROP TABLE IF EXISTS s_flood_road_ln;
 
 CREATE TABLE s_flood_road_ln AS
@@ -92,28 +111,62 @@ WITH below_trigger_roads AS (
         ON ft.nextgen_id = mf.nextgen_id
     WHERE 
         ft.min_flood_flow < mf.max_flow
+),
+joined_roads AS (
+    SELECT 
+        s.geometry,
+        s.osm_id,
+        s.fclass,
+        s.name,
+        s.ref,
+        s.road_id,
+        btr.nextgen_id, 
+        btr.min_flood_flow, 
+        btr.max_flow, 
+        btr.model_run_time
+    FROM 
+        below_trigger_roads btr
+    JOIN 
+        s_road_segment_ln s 
+        ON btr.road_id = s.road_id
+),
+deduped_by_attributes AS (
+    SELECT DISTINCT ON (
+        osm_id, fclass, name, ref, road_id, nextgen_id, 
+        min_flood_flow, max_flow, model_run_time
+    )
+    *
+    FROM joined_roads
+    ORDER BY 
+        osm_id, fclass, name, ref, road_id, nextgen_id, 
+        min_flood_flow, max_flow, model_run_time
+),
+deduped_by_geometry AS (
+    SELECT DISTINCT ON (geometry)
+        *
+    FROM deduped_by_attributes
+    ORDER BY geometry
 )
-SELECT 
-    s.*, 
-    btr.nextgen_id, 
-    btr.min_flood_flow, 
-    btr.max_flow, 
-    btr.model_run_time
-FROM 
-    below_trigger_roads btr
-JOIN 
-    s_road_segment_ln s 
-    ON btr.road_id = s.road_id;
-	
+SELECT * FROM deduped_by_geometry;
+
+
+-- merge the selected flood polygons into a single multi-polygon
 DROP TABLE IF EXISTS s_flood_merge_ar;
 
 CREATE TABLE s_flood_merge_ar AS
 SELECT
     -- Take the model_run_time from the first record (by order, or just any one)
     (SELECT model_run_time FROM s_selected_flood_ar ORDER BY model_run_time LIMIT 1) AS model_run_time,
-    ST_Multi(ST_Union(geometry)) AS geometry
+    ST_Multi(ST_Union(geometry)) AS geometry,
+	1::integer AS is_real
 FROM s_selected_flood_ar;
 
+-- Assign SRID if missing (only needed if ST_SRID returns 0)
+UPDATE s_flood_road_ln SET geometry = ST_SetSRID(geometry, 4326) WHERE ST_SRID(geometry) = 0;
+UPDATE s_flood_merge_ar SET geometry = ST_SetSRID(geometry, 4326) WHERE ST_SRID(geometry) = 0;
+
+
+-- trim the flooded road polygons to the merged floodplain
 DROP TABLE IF EXISTS s_flood_road_trim_ln;
 
 CREATE TABLE s_flood_road_trim_ln AS
@@ -127,7 +180,8 @@ SELECT
     r.min_flood_flow,
     r.max_flow,
     r.model_run_time,
-    ST_Intersection(r.geometry, f.geometry) AS geometry
+    ST_Intersection(r.geometry, f.geometry) AS geometry,
+	ROUND(ST_Length(ST_Transform(ST_Intersection(r.geometry, f.geometry), 3857)) * 3.28084) AS length_ft
 FROM
     s_flood_road_ln r
 JOIN
@@ -137,10 +191,9 @@ ON
 WHERE
     ST_Intersects(r.geometry, f.geometry);
 	
--- creating / updating the t_current_forecast
+-- Create the new table with a single row containing the first model_run_time value from t_flow_forecast
 DROP TABLE IF EXISTS t_current_forecast;
 
--- Create the new table with a single row containing the first model_run_time value from t_flow_forecast
 CREATE TABLE t_current_forecast AS
 SELECT model_run_time
 FROM t_flow_forecast
