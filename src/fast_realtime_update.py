@@ -72,7 +72,7 @@ def fn_fast_realtime_update(str_config_file_path, b_print_output):
     try:
         b_needs_update = fn_determine_if_database_current(str_config_file_path, b_print_output)
         # ************ Temp for testing
-        b_needs_update = True
+        #b_needs_update = True
         # ************ Temp for testing
 
         if b_needs_update:
