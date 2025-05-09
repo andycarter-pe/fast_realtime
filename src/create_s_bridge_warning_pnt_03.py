@@ -273,7 +273,7 @@ def fn_create_s_bridge_warning_pnt(str_config_file_path, b_print_output):
         # create an empty geodataframe of bridge points that matches a populated dataset of gdf_flow_points
         gdf_flow_points = gpd.GeoDataFrame(columns=[
         'geometry', 'BRDG_ID', 'uuid_bridge', 'min_low_ch',
-        'min_ground', 'min_overtop', 'min_overtop', 'name',
+        'min_ground', 'min_overtop', 'name',
         'ref', 'nhd_name', 'model_run_time', 'max_wse',
         'min_dist_to_low_ch', 'is_overtop', 'depth_array',
         'url'], geometry='geometry', crs='EPSG:4326')
