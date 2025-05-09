@@ -45,7 +45,7 @@ FROM flows_with_array;
 Method to comment out multiple rows
 */
 
-
+/*
 -- temporary fake flow for testing
 UPDATE t_flow_per_nextgen
 SET
@@ -69,7 +69,7 @@ SET
    flow_array[18] = 0,
    max_flow = 4200,
    max_hour = 7;
-   
+*/   
 -- end temp
 
 
