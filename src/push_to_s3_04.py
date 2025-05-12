@@ -4,6 +4,7 @@
 #
 # Created by: Andy Carter, PE
 # Created - 2025.05.03
+# Revised - 2025.05.12 -- Smaller GeoJSON to TxDOT
 # ************************************************************
 
 # ************************************************************
@@ -100,6 +101,21 @@ def fn_write_gdf_to_s3(gdf, str_bucket_name, str_s3_key):
 # ----------------------
 
 
+# ----------------
+def fn_assign_warn_class(row):
+    if row['is_overtop'] == 1:
+        return 'overtopped'
+    elif row['min_dist_to_low_ch'] < 0.5:
+        return 'critical'
+    elif 0.5 <= row['min_dist_to_low_ch'] < 2:
+        return 'high'
+    elif 2 <= row['min_dist_to_low_ch'] < 5:
+        return 'moderate'
+    else:
+        return 'low'
+# ----------------
+
+
 # .........................................................
 def fn_push_to_s3(str_config_file_path, b_print_output):
     # suppress all warnings
@@ -149,13 +165,15 @@ def fn_push_to_s3(str_config_file_path, b_print_output):
     else:
         raise KeyError("Missing [write_to_s3] section in config file")
         
-    # bridge point table
+    # table names in PostgreSQL
     str_bridge_table_name = 's_bridge_warning_pnt'
+    str_road_nav_table_name = 's_flood_road_ln'
     str_road_table_name = 's_flood_road_trim_ln'
     str_inundation_table_name = 's_flood_merge_ar'
     
-    gdf_s_flood_road_trim_ln = fn_get_geodataframe_from_postgresql(str_road_table_name, db_params,'geometry')
     gdf_s_bridge_warning_pnt = fn_get_geodataframe_from_postgresql(str_bridge_table_name, db_params,'geometry')
+    gdf_s_flood_road_nav_ln = fn_get_geodataframe_from_postgresql(str_road_nav_table_name , db_params,'geometry')
+    gdf_s_flood_road_trim_ln = fn_get_geodataframe_from_postgresql(str_road_table_name, db_params,'geometry')
     gdf_s_flood_merge_ar = fn_get_geodataframe_from_postgresql(str_inundation_table_name, db_params,'geometry')
     
     # Even if there are no polygons, this shold have one row with model_run_time
@@ -213,7 +231,7 @@ def fn_push_to_s3(str_config_file_path, b_print_output):
             'nhd_name': [''],
             'model_run_time': [str_model_run_time],
             'max_wse': [None],
-            'min_dist_to_low_ch': [None],
+            'min_dist_to_low_ch': ['100'],
             'is_overtop': ['0'],
             'depth_array': [[ ]],
             'url': [''],
@@ -221,18 +239,34 @@ def fn_push_to_s3(str_config_file_path, b_print_output):
         }
         
         gdf_s_bridge_warning_pnt = gpd.GeoDataFrame(dict_empty_bridge_data, crs="EPSG:4326")
-        
-    # --- Write the flood polygons ---
-    str_s3_flood_ar_key = 'flood_ar.geojson'
-    fn_write_gdf_to_s3(gdf_s_flood_merge_ar, str_bucket_name, str_s3_flood_ar_key)
     
-    # --- Write the road lines ---
-    str_s3_road_ln_key = 'flood_road_ln.geojson'
-    fn_write_gdf_to_s3(gdf_s_flood_road_trim_ln, str_bucket_name, str_s3_road_ln_key)
+    # --- Prepare layers for lean TxDOT export ---
+    columns_to_keep_road = ['geometry', 'name', 'ref', 'fclass', 'model_run_time']
+    
+    gdf_s_flood_road_nav_ln = gdf_s_flood_road_nav_ln[columns_to_keep_road]
+    gdf_s_flood_road_trim_ln = gdf_s_flood_road_trim_ln[columns_to_keep_road]
+    
+    # Prepare prepare bridge worning points for geoJSON
+    gdf_s_bridge_warning_pnt['warn_class'] = gdf_s_bridge_warning_pnt.apply(fn_assign_warn_class, axis=1)
+    columns_to_keep_bridge = ['geometry', 'warn_class', 'BRDG_ID', 'name', 'ref', 'nhd_name', 'min_dist_to_low_ch', 'model_run_time', 'url']
+    gdf_s_bridge_warning_pnt = gdf_s_bridge_warning_pnt[columns_to_keep_bridge]
+    
     
     # --- Write the bridge points ---
     str_s3_bridge_pnt_key = 'bridge_warning_pnts.geojson'
     fn_write_gdf_to_s3(gdf_s_bridge_warning_pnt, str_bucket_name, str_s3_bridge_pnt_key)
+    
+    # --- Write the navigation road lines ---
+    str_s3_road_ln_key = 'flood_road_nav_ln.geojson'
+    fn_write_gdf_to_s3(gdf_s_flood_road_nav_ln, str_bucket_name, str_s3_road_ln_key)
+    
+    # --- Write the trimmed road lines ---
+    str_s3_road_ln_key = 'flood_road_trim_ln.geojson'
+    fn_write_gdf_to_s3(gdf_s_flood_road_trim_ln, str_bucket_name, str_s3_road_ln_key)
+    
+    # --- Write the flood polygons ---
+    str_s3_flood_ar_key = 'flood_ar.geojson'
+    fn_write_gdf_to_s3(gdf_s_flood_merge_ar, str_bucket_name, str_s3_flood_ar_key)
 # .........................................................
 
 

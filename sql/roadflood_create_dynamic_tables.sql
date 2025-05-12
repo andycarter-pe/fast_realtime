@@ -69,9 +69,9 @@ SET
    flow_array[18] = 0,
    max_flow = 4200,
    max_hour = 7;
-*/   
+  
 -- end temp
-
+*/
 
 -- select the appropriate flood area polygons
 DROP TABLE IF EXISTS s_selected_flood_ar;
