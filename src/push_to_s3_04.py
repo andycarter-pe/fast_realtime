@@ -241,10 +241,11 @@ def fn_push_to_s3(str_config_file_path, b_print_output):
         gdf_s_bridge_warning_pnt = gpd.GeoDataFrame(dict_empty_bridge_data, crs="EPSG:4326")
     
     # --- Prepare layers for lean TxDOT export ---
-    columns_to_keep_road = ['geometry', 'name', 'ref', 'fclass', 'model_run_time']
+    columns_to_keep_road_nav = ['geometry', 'name', 'ref', 'fclass', 'model_run_time']
+    gdf_s_flood_road_nav_ln = gdf_s_flood_road_nav_ln[columns_to_keep_road_nav]
     
-    gdf_s_flood_road_nav_ln = gdf_s_flood_road_nav_ln[columns_to_keep_road]
-    gdf_s_flood_road_trim_ln = gdf_s_flood_road_trim_ln[columns_to_keep_road]
+    columns_to_keep_road_trim = ['geometry', 'name', 'ref', 'fclass', 'model_run_time', 'length_ft']
+    gdf_s_flood_road_trim_ln = gdf_s_flood_road_trim_ln[columns_to_keep_road_trim]
     
     # Prepare prepare bridge worning points for geoJSON
     gdf_s_bridge_warning_pnt['warn_class'] = gdf_s_bridge_warning_pnt.apply(fn_assign_warn_class, axis=1)
