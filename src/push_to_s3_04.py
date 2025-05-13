@@ -201,7 +201,7 @@ def fn_push_to_s3(str_config_file_path, b_print_output):
         # Define placeholder attributes
         dict_empty_road_data = {
             'osm_id': [-1],
-            'fclass': ['motorway'],
+            'fclass': ['unknown'],
             'name': ["This placeholder when there is no flooding that allows AGOL to still load the layer"],
             'ref': [''],
             'road_id': [-1],
@@ -209,6 +209,7 @@ def fn_push_to_s3(str_config_file_path, b_print_output):
             'min_flood_flow': [-1],
             'max_flow': [-1],
             'model_run_time': [str_model_run_time],
+            'length_ft': [0],
             'geometry': [geometry_fake_line]
         }
         
@@ -231,10 +232,11 @@ def fn_push_to_s3(str_config_file_path, b_print_output):
             'nhd_name': [''],
             'model_run_time': [str_model_run_time],
             'max_wse': [None],
-            'min_dist_to_low_ch': ['100'],
+            'min_dist_to_low_ch': [100],
             'is_overtop': ['0'],
             'depth_array': [[ ]],
             'url': [''],
+            'warn_class': ['low'],
             'geometry': [geometry_fake_point]
         }
         
