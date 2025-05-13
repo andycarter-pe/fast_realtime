@@ -215,6 +215,30 @@ def fn_push_to_s3(str_config_file_path, b_print_output):
         
         gdf_s_flood_road_trim_ln = gpd.GeoDataFrame(dict_empty_road_data, crs="EPSG:4326")
         
+    # -- If empty, create a AGOL placeholder for road lines
+    if gdf_s_flood_road_nav_ln.empty:
+        
+        geometry_fake_line = MultiLineString([[
+            (-97.793186, 30.547194),
+            (-97.7892304, 30.5487087)]])
+    
+        # Define placeholder attributes
+        dict_empty_road_data = {
+            'osm_id': [-1],
+            'fclass': ['unknown'],
+            'name': ["This placeholder when there is no flooding that allows AGOL to still load the layer"],
+            'ref': [''],
+            'road_id': [-1],
+            'nextgen_id': [-1],
+            'min_flood_flow': [-1],
+            'max_flow': [-1],
+            'model_run_time': [str_model_run_time],
+            'length_ft': [0],
+            'geometry': [geometry_fake_line]
+        }
+        
+        gdf_s_flood_road_nav_ln = gpd.GeoDataFrame(dict_empty_road_data, crs="EPSG:4326")
+        
     # -- If empty, create a AGOL placeholder for bridge warning points
     if gdf_s_bridge_warning_pnt.empty:
         
