@@ -2,7 +2,7 @@ DROP TABLE IF EXISTS t_flow_per_nextgen;
 
 CREATE TABLE t_flow_per_nextgen AS
 WITH unique_ids AS (
-    SELECT DISTINCT nextgen_id
+    SELECT DISTINCT nextgen_id::text AS nextgen_id
     FROM s_flood_inundation_ar
 ),
 crosswalked AS (
@@ -32,12 +32,12 @@ SELECT
         SELECT MAX(val) FROM unnest(flow_array) AS val
     ) AS max_flow,
     (
-        SELECT i - 1  -- Subtract 1 because PostgreSQL arrays are 1-based
+        SELECT i - 1
         FROM generate_subscripts(flow_array, 1) AS i
         WHERE flow_array[i] = (
             SELECT MAX(val) FROM unnest(flow_array) AS val
         )
-        LIMIT 1  -- in case of ties, take the first occurrence
+        LIMIT 1
     ) AS max_hour
 FROM flows_with_array;
 
@@ -49,23 +49,23 @@ Method to comment out multiple rows
 -- temporary fake flow for testing
 UPDATE t_flow_per_nextgen
 SET
-   flow_array[1] = 359,
-   flow_array[2] = 617,
-   flow_array[3] = 876,
-   flow_array[4] = 1134,
-   flow_array[5] = 1393,
-   flow_array[6] = 1651,
+   flow_array[1] = 100,
+   flow_array[2] = 200,
+   flow_array[3] = 300,
+   flow_array[4] = 400,
+   flow_array[5] = 500,
+   flow_array[6] = 600,
    flow_array[7] = 4200,
-   flow_array[8] = 1745,
-   flow_array[9] = 1389,
-   flow_array[10] = 1034,
-   flow_array[11] = 678,
-   flow_array[12] = 323,
+   flow_array[8] = 1200,
+   flow_array[9] = 800,
+   flow_array[10] = 400,
+   flow_array[11] = 100,
+   flow_array[12] = 100,
    flow_array[13] = 100,
-   flow_array[14] = 100,
-   flow_array[15] = 100,
-   flow_array[16] = 100,
-   flow_array[17] = 100,
+   flow_array[14] = 50,
+   flow_array[15] = 50,
+   flow_array[16] = 50,
+   flow_array[17] = 50,
    flow_array[18] = 0,
    max_flow = 4200,
    max_hour = 7;
@@ -88,7 +88,7 @@ FROM t_flow_per_nextgen t
 LEFT JOIN LATERAL (
     SELECT *
     FROM s_flood_inundation_ar s
-    WHERE s.nextgen_id = t.nextgen_id
+    WHERE s.nextgen_id::text = t.nextgen_id
       AND s.flow <= t.max_flow
     ORDER BY s.flow DESC
     LIMIT 1
