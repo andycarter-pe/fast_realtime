@@ -264,7 +264,14 @@ SELECT
     r.min_flood_flow,
     r.max_flow,
     r.model_run_time,
-    ST_Intersection(r.geometry, f.geometry) AS geometry
+    ST_Intersection(r.geometry, f.geometry) AS geometry,
+    ROUND(
+        ST_Length(
+            ST_Transform(
+                ST_Intersection(r.geometry, f.geometry), 3857
+            )
+        ) * 3.28084
+    ) AS length_ft
 FROM
     s_flood_road_ln_tile r
 JOIN
