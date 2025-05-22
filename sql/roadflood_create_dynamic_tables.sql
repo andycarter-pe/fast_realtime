@@ -200,10 +200,3 @@ CREATE TABLE t_current_forecast AS
 SELECT model_run_time
 FROM t_flow_forecast
 LIMIT 1;
-
--- Need to add col to s_flood_merge_ar
-ALTER TABLE s_flood_merge_ar
-ADD COLUMN model_run_time TEXT;
-
-UPDATE s_flood_merge_ar
-SET model_run_time = (SELECT model_run_time FROM t_current_forecast LIMIT 1);
