@@ -50,6 +50,7 @@ CREATE INDEX idx_t_flow_per_nextgen_nextgen_id ON t_flow_per_nextgen(nextgen_id)
 Method to comment out multiple rows
 */
 
+/*
 -- temporary fake flow for testing
 UPDATE t_flow_per_nextgen
 SET
@@ -74,7 +75,7 @@ SET
    max_flow = 4200,
    max_hour = 7;
 -- end temp
-
+*/
 
 -- ITEM #1
 -- select the appropriate flood area polygons -- 29 seconds (11528 polys from 397k)
