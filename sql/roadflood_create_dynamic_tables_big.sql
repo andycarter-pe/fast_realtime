@@ -176,7 +176,8 @@ SELECT * FROM deduped_by_geometry;
 
 -- ITEM #3
 -- create a grid of tiles over the s_selected_flood_ar
-DROP TABLE IF EXISTS s_flood_grid_ar;
+/*DROP TABLE IF EXISTS s_flood_grid_ar;
+
 
 CREATE TABLE s_flood_grid_ar AS
 WITH ext AS (
@@ -198,6 +199,33 @@ FROM dumped;
 
 ALTER TABLE s_flood_grid_ar ADD PRIMARY KEY (id);
 
+CREATE INDEX idx_s_flood_grid_ar_geom ON s_flood_grid_ar USING GIST (geom);
+*/
+
+
+-- ITEM #3 - revised 2025.06.09
+-- Create a grid of tiles over the s_selected_flood_ar
+DROP TABLE IF EXISTS s_flood_grid_ar;
+
+CREATE TABLE s_flood_grid_ar AS
+WITH ext AS (
+    SELECT ST_SetSRID(ST_Extent(geometry)::box2d, 4326) AS geom_extent
+    FROM s_selected_flood_ar
+),
+grid AS (
+    SELECT ST_Collect(sg.geom) AS geom_collection
+    FROM ext, ST_SquareGrid(0.25, ext.geom_extent) AS sg(geom)
+),
+dumped AS (
+    SELECT (ST_Dump(geom_collection)).geom
+    FROM grid
+)
+SELECT 
+    row_number() OVER () AS id,
+    dumped.geom
+FROM dumped;
+
+ALTER TABLE s_flood_grid_ar ADD PRIMARY KEY (id);
 CREATE INDEX idx_s_flood_grid_ar_geom ON s_flood_grid_ar USING GIST (geom);
 
 
