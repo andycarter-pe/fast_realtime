@@ -12,6 +12,7 @@ import time
 import datetime
 import warnings
 import os
+import sys
 
 
 # Import modules
@@ -81,9 +82,17 @@ def fn_fast_realtime_update(str_config_file_path, b_print_output):
             else:
                 fn_populate_t_flow_forecast(str_config_file_path, b_print_output)
 
-            fn_run_sql_udpate_dynamic_tables(str_config_file_path, b_print_output)
-            fn_create_s_bridge_warning_pnt(str_config_file_path, b_print_output)
-            fn_push_to_s3(str_config_file_path, b_print_output)
+            str_status = fn_run_sql_udpate_dynamic_tables(str_config_file_path, b_print_output)
+            
+            if str_status == "success":
+                fn_create_s_bridge_warning_pnt(str_config_file_path, b_print_output)
+                fn_push_to_s3(str_config_file_path, b_print_output)
+            elif str_status == "timeout":
+                print(" -- SQL timed out.")
+                sys.exit(1)
+            else:
+                print(" -- SQL failed or config was invalid.")
+                sys.exit(1)
         
         print("+-----------------------------------------------------------------+")
 
@@ -130,6 +139,3 @@ if __name__ == '__main__':
         exit(1)  # non-zero exit code indicates error
 
  #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
- 
- 
- 

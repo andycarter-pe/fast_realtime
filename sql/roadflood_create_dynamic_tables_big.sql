@@ -1,3 +1,7 @@
+-- SETTING A TIMEOUT FOR HEAVY QUERRIES
+-- revised 206.06.10
+SET statement_timeout TO '3min';
+
 -- ITEM #0
 -- Establish flows per stream
 
@@ -201,7 +205,6 @@ ALTER TABLE s_flood_grid_ar ADD PRIMARY KEY (id);
 
 CREATE INDEX idx_s_flood_grid_ar_geom ON s_flood_grid_ar USING GIST (geom);
 */
-
 
 -- ITEM #3 - revised 2025.06.09
 -- Create a grid of tiles over the s_selected_flood_ar

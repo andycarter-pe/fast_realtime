@@ -4,6 +4,7 @@
 #
 # Created by: Andy Carter, PE
 # Created - 2025.05.01
+# Revised - 2025.06.12 -- Allow Graceful Timeout of SQL
 # ************************************************************
 
 
@@ -45,7 +46,6 @@ def fn_str_to_bool(value):
 
 # ---------------
 def fn_run_sql_script(db_config, sql_file_path):
-    # Connect to the PostgreSQL database
     try:
         conn = psycopg2.connect(
             host=db_config['host'],
@@ -55,23 +55,28 @@ def fn_run_sql_script(db_config, sql_file_path):
         )
         print("  -- Connected to the database")
         
-        # Open the SQL file and read its contents
         with open(sql_file_path, 'r') as sql_file:
             sql_script = sql_file.read()
 
-        # Create a cursor and execute the SQL script
         cursor = conn.cursor()
-        cursor.execute(sql_script)
-        conn.commit()  # Commit the transaction
 
-        print(f"  -- SQL script executed successfully")
+        try:
+            cursor.execute(sql_script)
+            conn.commit()
+            print("  -- SQL script executed successfully")
+            return "success"
+        except psycopg2.errors.QueryCanceled:
+            print("  !! SQL query exceeded statement_timeout and was canceled")
+            return "timeout"
+        except Exception as e:
+            print(f"  !! SQL execution error: {e}")
+            return "error"
 
-    except Exception as e:
-        print(f"Error executing SQL script: {e}")
     finally:
-        # Close the cursor and connection
-        cursor.close()
-        conn.close()
+        if 'cursor' in locals():
+            cursor.close()
+        if 'conn' in locals():
+            conn.close()
 # ---------------
 
 
@@ -94,44 +99,47 @@ def fn_run_sql_udpate_dynamic_tables(str_config_file_path, b_print_output):
     else:
         print('Step 2: Update realtime flood tables')
 
-    # --- Read variables from config.ini ---
+    # --- Read config ---
     config = configparser.ConfigParser()
-    config.read(str_config_file_path)
-    
-    if 'database' in config:
+    try:
+        config.read(str_config_file_path)
+
+        if 'database' not in config or 'sql' not in config:
+            print("  !! Missing [database] or [sql] section in config file")
+            return "error"
+
         section = config['database']
-        
-        # Database connection configuration
         db_config = {
             'host': section.get('host', ''),
             'dbname': section.get('dbname', ''),
             'user': section.get('username', ''),
             'password': section.get('password', '')
         }
-        
-        # Overwrite with environment variable if password is 'xxx'
+
         if db_config['password'] == 'xxx':
             db_config['password'] = os.environ.get('DB_PASSWORD', '')
-    else:
-        raise KeyError("Missing [database] section in config file")
-        
-    if 'sql' in config:
-        section = config['sql']
-        
-        # SQL file to run
-        sql_file_path = section.get('sql_file_path', '')
+
+        sql_file_path = config['sql'].get('sql_file_path', '')
+        if not sql_file_path:
+            print("  !! SQL file path not provided in config")
+            return "error"
+
         print(f"  -- SQL file: {sql_file_path}")
-    else:
-        raise KeyError("Missing [sql] section in config file")
-        
+
+    except Exception as e:
+        print(f"  !! Error reading config file: {e}")
+        return "error"
+
+    # --- Run SQL ---
     try:
         print("  -- Connecting to the database")
-        # Run the script
-        fn_run_sql_script(db_config, sql_file_path)
+        result = fn_run_sql_script(db_config, sql_file_path)
+        return result  # Expected: 'success', 'timeout', or 'error'
     except Exception as e:
-        print(f"Processing failed: {e}")
-        raise
+        print(f"  !! SQL execution failed: {e}")
+        return "error"
 # .........................................................
+
 
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
