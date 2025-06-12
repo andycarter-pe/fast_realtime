@@ -5,6 +5,7 @@
 # Created by: Andy Carter, PE
 # Created - 2025.05.03
 # Revised - 2025.06.06 -- Subfolder allowed on S3 -- publish_sub_folder
+# Revised - 2025.06.12 -- ESRI GeoJSON with ogr2ogr subprocess
 # ************************************************************
 
 # ************************************************************
@@ -17,11 +18,13 @@ import configparser
 from shapely.geometry import MultiLineString, Point, Polygon
 import os
 
-import argparse
-import configparser
 import time
 import datetime
 import warnings
+
+import subprocess
+import tempfile
+import json
 # ************************************************************
 
 
@@ -98,6 +101,41 @@ def fn_write_gdf_to_s3(gdf, str_bucket_name, str_s3_key):
     s3 = boto3.client('s3')
     s3.upload_fileobj(geojson_buffer, str_bucket_name, str_s3_key)
     print(f"  -- Uploaded to s3://{str_bucket_name}/{str_s3_key}")
+# ----------------------
+
+
+# ----------------------
+def fn_write_gdf_to_s3_esrijson(gdf, str_bucket_name, str_s3_key):
+    # Convert datetime columns to string format first (like your original)
+    gdf = gdf.apply(lambda x: x.dt.strftime('%Y-%m-%dT%H:%M:%S') if x.dtype == 'datetime64[ns]' else x)
+
+    with tempfile.NamedTemporaryFile(suffix='.geojson', mode='w+', delete=True) as tmp_in, \
+         tempfile.NamedTemporaryFile(suffix='.json', mode='r+', delete=True) as tmp_out:
+
+        # Write standard GeoJSON to input temp file
+        geojson_str = gdf.to_json()
+        tmp_in.write(geojson_str)
+        tmp_in.flush()
+
+        # Run ogr2ogr to convert GeoJSON to ESRI JSON
+        # -f JSON = ESRI JSON format
+        subprocess.run([
+            'ogr2ogr',
+            '-f', 'JSON',       # ESRI JSON output format
+            tmp_out.name,
+            tmp_in.name
+        ], check=True)
+
+        # Read converted ESRI JSON
+        tmp_out.seek(0)
+        esri_json_str = tmp_out.read()
+
+    # Upload ESRI JSON string to S3
+    geojson_buffer = BytesIO(esri_json_str.encode('utf-8'))
+    s3 = boto3.client('s3')
+    s3.upload_fileobj(geojson_buffer, str_bucket_name, str_s3_key)
+
+    print(f"  -- Uploaded ESRI JSON to s3://{str_bucket_name}/{str_s3_key}")
 # ----------------------
 
 
