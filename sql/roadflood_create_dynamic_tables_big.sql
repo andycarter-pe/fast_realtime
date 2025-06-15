@@ -346,5 +346,8 @@ LIMIT 1;
 ALTER TABLE s_flood_merge_ar
 ADD COLUMN model_run_time TEXT;
 
+-- Insert one row if s_flood_merge_ar is empty
+INSERT INTO s_flood_merge_ar (model_run_time) SELECT NULL WHERE NOT EXISTS (SELECT 1 FROM s_flood_merge_ar);
+
 UPDATE s_flood_merge_ar
 SET model_run_time = (SELECT model_run_time FROM t_current_forecast LIMIT 1);

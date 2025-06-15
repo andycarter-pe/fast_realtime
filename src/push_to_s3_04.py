@@ -332,7 +332,7 @@ def fn_push_to_s3(str_config_file_path, b_print_output):
     # --- Write the flood polygons ---
     str_s3_flood_ar_key = f"{str_publish_sub_folder}flood_ar.geojson"
     fn_write_gdf_to_s3(gdf_s_flood_merge_ar, str_bucket_name, str_s3_flood_ar_key)
-    str_s3_flood_ar_esri_key = f"{str_publish_sub_folder}flood_ar.geojson"
+    str_s3_flood_ar_esri_key = f"{str_publish_sub_folder}flood_ar_esrijson.json"
     fn_write_gdf_to_s3_esrijson(gdf_s_flood_merge_ar, str_bucket_name, str_s3_flood_ar_esri_key)
 # .........................................................
 
