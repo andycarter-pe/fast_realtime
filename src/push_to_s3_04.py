@@ -5,7 +5,7 @@
 # Created by: Andy Carter, PE
 # Created - 2025.05.03
 # Revised - 2025.06.06 -- Subfolder allowed on S3 -- publish_sub_folder
-# Revised - 2025.06.12 -- ESRI GeoJSON with ogr2ogr subprocess
+# Revised - 2025.06.13 -- Revised to Esri.json  - commented out
 # ************************************************************
 
 # ************************************************************
@@ -25,6 +25,7 @@ import warnings
 import subprocess
 import tempfile
 import json
+import esrijson
 # ************************************************************
 
 
@@ -106,29 +107,17 @@ def fn_write_gdf_to_s3(gdf, str_bucket_name, str_s3_key):
 
 # ----------------------
 def fn_write_gdf_to_s3_esrijson(gdf, str_bucket_name, str_s3_key):
-    # Convert datetime columns to string format first (like your original)
+    # Convert datetime columns to string ISO format
     gdf = gdf.apply(lambda x: x.dt.strftime('%Y-%m-%dT%H:%M:%S') if x.dtype == 'datetime64[ns]' else x)
 
-    with tempfile.NamedTemporaryFile(suffix='.geojson', mode='w+', delete=True) as tmp_in, \
-         tempfile.NamedTemporaryFile(suffix='.json', mode='r+', delete=True) as tmp_out:
+    # Convert GeoDataFrame to GeoJSON string first
+    geojson_str = gdf.to_json()
 
-        # Write standard GeoJSON to input temp file
-        geojson_str = gdf.to_json()
-        tmp_in.write(geojson_str)
-        tmp_in.flush()
+    # Convert GeoJSON string to Python dict
+    geojson_dict = json.loads(geojson_str)
 
-        # Run ogr2ogr to convert GeoJSON to ESRI JSON
-        # -f JSON = ESRI JSON format
-        subprocess.run([
-            'ogr2ogr',
-            '-f', 'JSON',       # ESRI JSON output format
-            tmp_out.name,
-            tmp_in.name
-        ], check=True)
-
-        # Read converted ESRI JSON
-        tmp_out.seek(0)
-        esri_json_str = tmp_out.read()
+    # Convert GeoJSON dict to ESRI JSON string using esrijson.dumps()
+    esri_json_str = esrijson.dumps(geojson_dict)
 
     # Upload ESRI JSON string to S3
     geojson_buffer = BytesIO(esri_json_str.encode('utf-8'))
@@ -325,22 +314,26 @@ def fn_push_to_s3(str_config_file_path, b_print_output):
     # --- Write the bridge points ---
     str_s3_bridge_pnt_key = f"{str_publish_sub_folder}bridge_warning_pnts.geojson"
     fn_write_gdf_to_s3(gdf_s_bridge_warning_pnt, str_bucket_name, str_s3_bridge_pnt_key)
-    #fn_write_gdf_to_s3_esrijson(gdf_s_bridge_warning_pnt, str_bucket_name, str_s3_bridge_pnt_key)
+    str_s3_bridge_pnt_esri_key = f"{str_publish_sub_folder}bridge_warning_pnts_esrijson.json"
+    fn_write_gdf_to_s3_esrijson(gdf_s_bridge_warning_pnt, str_bucket_name, str_s3_bridge_pnt_esri_key)
     
     # --- Write the navigation road lines ---
     str_s3_road_nav_ln_key = f"{str_publish_sub_folder}flood_road_nav_ln.geojson"
     fn_write_gdf_to_s3(gdf_s_flood_road_nav_ln, str_bucket_name, str_s3_road_nav_ln_key)
-    #fn_write_gdf_to_s3_esrijson(gdf_s_flood_road_nav_ln, str_bucket_name, str_s3_road_nav_ln_key)
+    str_s3_road_nav_ln_esri_key = f"{str_publish_sub_folder}flood_road_nav_ln_esrijson.json"
+    fn_write_gdf_to_s3_esrijson(gdf_s_flood_road_nav_ln, str_bucket_name, str_s3_road_nav_ln_esri_key)
     
     # --- Write the trimmed road lines ---
     str_s3_road_trim_ln_key = f"{str_publish_sub_folder}flood_road_trim_ln.geojson"
     fn_write_gdf_to_s3(gdf_s_flood_road_trim_ln, str_bucket_name, str_s3_road_trim_ln_key)
-    #fn_write_gdf_to_s3_esrijson(gdf_s_flood_road_trim_ln, str_bucket_name, str_s3_road_trim_ln_key)
+    str_s3_road_trim_ln_esri_key = f"{str_publish_sub_folder}flood_road_trim_ln_esrijson.json"
+    fn_write_gdf_to_s3_esrijson(gdf_s_flood_road_trim_ln, str_bucket_name, str_s3_road_trim_ln_esri_key)
     
     # --- Write the flood polygons ---
     str_s3_flood_ar_key = f"{str_publish_sub_folder}flood_ar.geojson"
     fn_write_gdf_to_s3(gdf_s_flood_merge_ar, str_bucket_name, str_s3_flood_ar_key)
-    fn_write_gdf_to_s3_esrijson(gdf_s_flood_merge_ar, str_bucket_name, str_s3_flood_ar_key)
+    str_s3_flood_ar_esri_key = f"{str_publish_sub_folder}flood_ar.geojson"
+    fn_write_gdf_to_s3_esrijson(gdf_s_flood_merge_ar, str_bucket_name, str_s3_flood_ar_esri_key)
 # .........................................................
 
 

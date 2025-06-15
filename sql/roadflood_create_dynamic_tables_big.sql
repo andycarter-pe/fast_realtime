@@ -1,5 +1,5 @@
 -- SETTING A TIMEOUT FOR HEAVY QUERRIES
--- revised 206.06.10
+-- revised 2025.06.10
 SET statement_timeout TO '3min';
 
 -- ITEM #0
