@@ -14,7 +14,7 @@
 # -- Center for Water and the Environment
 # -- University of Texas at Austin
 # Date: 2025-05-04
-# Revised: 2025-06-13
+# Revised: 2025-06-16
 # 
 # License: BSD 3-Clause License
 # ------------------------------------------------------------------------
@@ -34,7 +34,7 @@ RUN conda install python=3.8.12 -y
 RUN conda install gdal -y
 
 # Install python libraries via pip
-RUN pip install geopandas==0.12.1 boto3==1.28.80 xarray s3fs sqlalchemy psycopg2-binary tqdm numpy shapely geoalchemy2 esrijson
+RUN pip install geopandas==0.12.1 boto3==1.28.80 xarray s3fs sqlalchemy psycopg2-binary tqdm numpy shapely geoalchemy2
 
 # Making sure xarray has netcdf4 backend engines
 RUN pip install netcdf4 h5netcdf

@@ -25,7 +25,7 @@ import warnings
 import subprocess
 import tempfile
 import json
-import esrijson
+#import esrijson
 # ************************************************************
 
 
@@ -314,26 +314,26 @@ def fn_push_to_s3(str_config_file_path, b_print_output):
     # --- Write the bridge points ---
     str_s3_bridge_pnt_key = f"{str_publish_sub_folder}bridge_warning_pnts.geojson"
     fn_write_gdf_to_s3(gdf_s_bridge_warning_pnt, str_bucket_name, str_s3_bridge_pnt_key)
-    str_s3_bridge_pnt_esri_key = f"{str_publish_sub_folder}bridge_warning_pnts_esrijson.json"
-    fn_write_gdf_to_s3_esrijson(gdf_s_bridge_warning_pnt, str_bucket_name, str_s3_bridge_pnt_esri_key)
+    #str_s3_bridge_pnt_esri_key = f"{str_publish_sub_folder}bridge_warning_pnts_esrijson.json"
+    #fn_write_gdf_to_s3_esrijson(gdf_s_bridge_warning_pnt, str_bucket_name, str_s3_bridge_pnt_esri_key)
     
     # --- Write the navigation road lines ---
     str_s3_road_nav_ln_key = f"{str_publish_sub_folder}flood_road_nav_ln.geojson"
     fn_write_gdf_to_s3(gdf_s_flood_road_nav_ln, str_bucket_name, str_s3_road_nav_ln_key)
-    str_s3_road_nav_ln_esri_key = f"{str_publish_sub_folder}flood_road_nav_ln_esrijson.json"
-    fn_write_gdf_to_s3_esrijson(gdf_s_flood_road_nav_ln, str_bucket_name, str_s3_road_nav_ln_esri_key)
+    #str_s3_road_nav_ln_esri_key = f"{str_publish_sub_folder}flood_road_nav_ln_esrijson.json"
+    #fn_write_gdf_to_s3_esrijson(gdf_s_flood_road_nav_ln, str_bucket_name, str_s3_road_nav_ln_esri_key)
     
     # --- Write the trimmed road lines ---
     str_s3_road_trim_ln_key = f"{str_publish_sub_folder}flood_road_trim_ln.geojson"
     fn_write_gdf_to_s3(gdf_s_flood_road_trim_ln, str_bucket_name, str_s3_road_trim_ln_key)
-    str_s3_road_trim_ln_esri_key = f"{str_publish_sub_folder}flood_road_trim_ln_esrijson.json"
-    fn_write_gdf_to_s3_esrijson(gdf_s_flood_road_trim_ln, str_bucket_name, str_s3_road_trim_ln_esri_key)
+    #str_s3_road_trim_ln_esri_key = f"{str_publish_sub_folder}flood_road_trim_ln_esrijson.json"
+    #fn_write_gdf_to_s3_esrijson(gdf_s_flood_road_trim_ln, str_bucket_name, str_s3_road_trim_ln_esri_key)
     
     # --- Write the flood polygons ---
     str_s3_flood_ar_key = f"{str_publish_sub_folder}flood_ar.geojson"
     fn_write_gdf_to_s3(gdf_s_flood_merge_ar, str_bucket_name, str_s3_flood_ar_key)
-    str_s3_flood_ar_esri_key = f"{str_publish_sub_folder}flood_ar_esrijson.json"
-    fn_write_gdf_to_s3_esrijson(gdf_s_flood_merge_ar, str_bucket_name, str_s3_flood_ar_esri_key)
+    #str_s3_flood_ar_esri_key = f"{str_publish_sub_folder}flood_ar_esrijson.json"
+    #fn_write_gdf_to_s3_esrijson(gdf_s_flood_merge_ar, str_bucket_name, str_s3_flood_ar_esri_key)
 # .........................................................
 
 
