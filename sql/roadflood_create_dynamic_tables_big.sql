@@ -2,6 +2,9 @@
 -- revised 2025.06.10
 SET statement_timeout TO '3min';
 
+-- Acquire an advisory lock to prevent concurrent executions
+SELECT pg_advisory_lock(20250628);
+
 -- ITEM #0
 -- Establish flows per stream
 
@@ -351,3 +354,6 @@ INSERT INTO s_flood_merge_ar (model_run_time) SELECT NULL WHERE NOT EXISTS (SELE
 
 UPDATE s_flood_merge_ar
 SET model_run_time = (SELECT model_run_time FROM t_current_forecast LIMIT 1);
+
+-- Release the advisory lock manually (optional, as it auto-releases at session end)
+SELECT pg_advisory_unlock(20250628);
