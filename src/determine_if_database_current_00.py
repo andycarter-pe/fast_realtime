@@ -1,61 +1,18 @@
-# FAST-realtime update
-# Script 00 - determine_if_database_current_00
-#
-#
-# Created by: Andy Carter, PE
-# Created - 2025.05.03
-# ************************************************************
-
-# ************************************************************
-import boto3
-import os
-import re
-import pandas as pd
-import s3fs
-import psycopg2
-from sqlalchemy import create_engine
-
-import argparse
-import configparser
-import time
-import datetime
 import warnings
-# ************************************************************
+import re
+import boto3
+from botocore import UNSIGNED
+from botocore.config import Config
+from typing import Optional
+from utils import FASTConfig, load_config, resolve_db_credentials, fn_get_dataframe_from_postgresql
+import logging
+logger = logging.getLogger(__name__)
 
 
-# ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-def is_valid_file(parser, arg):
-    if not os.path.exists(arg):
-        parser.error("The file %s does not exist" % arg)
-    else:
-        # File exists so return the directory
-        return arg
-        return open(arg, 'r')  # return an open file handle
-# ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-
-# ----------------
-def fn_str_to_bool(value):
-    if isinstance(value, bool):
-        return value
-    if value.lower() in {'true', 't', '1'}:
-        return True
-    elif value.lower() in {'false', 'f', '0'}:
-        return False
-    else:
-        raise argparse.ArgumentTypeError(f"Boolean value expected. Got '{value}'.")
-# ----------------
-
-
-# ---------------------
 def fn_get_valid_forecast_group(date_prefix, bucket_name, file_pattern):
-    
-    s3 = boto3.client('s3')
-    
-    """Check all forecast hours on a given date, and return the most recent with 18+ files."""
+    s3 = boto3.client('s3', config=Config(signature_version=UNSIGNED))
     short_range_prefix = date_prefix + 'short_range/'
-
-    forecast_groups = {}  # Maps tXXz -> list of matching files
+    forecast_groups = {}
 
     paginator = s3.get_paginator('list_objects_v2')
     for page in paginator.paginate(Bucket=bucket_name, Prefix=short_range_prefix):
@@ -67,184 +24,102 @@ def fn_get_valid_forecast_group(date_prefix, bucket_name, file_pattern):
                 group_key = f"t{t_hour}z"
                 forecast_groups.setdefault(group_key, []).append(key)
 
-    # Sort by forecast group time, descending (e.g., t23z > t22z > ...)
     for group_key in sorted(forecast_groups.keys(), reverse=True):
         if len(forecast_groups[group_key]) >= 18:
-            return forecast_groups[group_key]  # Return the first valid group
-
-    return None  # No valid group for this day
-# ---------------------
+            return forecast_groups[group_key]
+    return None
 
 
-# -----------------
 def fn_parse_iso8601_date_from_s3(str_s3_filepath):
-    # Use regex to extract date and hour
     match = re.search(r'nwm\.(\d{8})/.*?\.t(\d{2})z', str_s3_filepath)
     if match:
-        date_part = match.group(1)      # '20250503'
-        hour_part = match.group(2)      # '17'
-        iso8601_str = f"{date_part[:4]}-{date_part[4:6]}-{date_part[6:]}T{hour_part}:00:00"
-        return(iso8601_str)
-    else:
-        return(None)
-# -----------------
+        date_part, hour_part = match.group(1), match.group(2)
+        return f"{date_part[:4]}-{date_part[4:6]}-{date_part[6:]}T{hour_part}:00:00"
+    return None
 
 
-# ~~~~~~~~~~~~~~~~~~~~~~
 def fn_determine_current_forecast():
-    # get Short-range from AWS nwm
-    s3 = boto3.client('s3')
-    
-    result = []
-
-    # ********* HARD CODED BUCKET **********
+    s3 = boto3.client('s3', config=Config(signature_version=UNSIGNED))
     bucket_name = 'noaa-nwm-pds'
-    # ********* HARD CODED BUCKET **********
 
-    base_prefix = ''  # Root of the bucket
-
-    # Get the list of date folders (e.g., 'nwm.20250502/')
     response = s3.list_objects_v2(Bucket=bucket_name, Delimiter='/')
-    date_prefixes = sorted(
-        [p['Prefix'] for p in response.get('CommonPrefixes', []) if re.match(r'nwm\.\d{8}/', p['Prefix'])],
-        reverse=True
-    )
+    date_prefixes = sorted([
+        p['Prefix'] for p in response.get('CommonPrefixes', [])
+        if re.match(r'nwm\.\d{8}/', p['Prefix'])
+    ], reverse=True)
 
-    # Regex pattern to extract time and forecast hour
     file_pattern = re.compile(r'nwm\.t(\d{2})z\.short_range\.channel_rt\.f(\d{3})\.conus\.nc')
 
-    # Walk through dates, find the most recent day with valid forecast group
     for date_prefix in date_prefixes:
         result = fn_get_valid_forecast_group(date_prefix, bucket_name, file_pattern)
         if result:
-            #print(f"  -- Found valid forecast group in {date_prefix}:")
-            break
-        else:
-            #print(f"  -- No valid forecast group found in {date_prefix}")
-            pass
-
-    return(result)
-# ~~~~~~~~~~~~~~~~~~~~~~
+            return result
+    return None
 
 
-# ------------
-def fn_get_dataframe_from_postgresql(str_table_name, dict_db_params):
-    conn = psycopg2.connect(
-        host=dict_db_params.get("host"),
-        user=dict_db_params.get("user"),
-        password=dict_db_params.get("password"),
-        dbname=dict_db_params.get("dbname")
-    )
-
-    cur = conn.cursor()
-    query = f"SELECT * FROM public.{str_table_name}"
-    cur.execute(query)
-    rows = cur.fetchall()
-    colnames = [desc[0] for desc in cur.description]
-    df = pd.DataFrame(rows, columns=colnames)
-    cur.close()
-    conn.close()
-
-    return df
-# ------------
-
-
-# .........................................................
-def fn_determine_if_database_current(str_config_file_path, b_print_output):
-    # suppress all warnings
+def fn_determine_if_database_current(cfg: FASTConfig, print_output: bool = False) -> bool:
     warnings.filterwarnings("ignore", category=UserWarning)
-    
-    b_needs_update = False
+    _workflow_id = (
+        getattr(cfg, "sql", None) and getattr(cfg.sql, "workflow_id", None)
+    ) or (
+        getattr(cfg, "download", None) and getattr(cfg.download, "workflow_id", None)
+    ) or "default"
 
-    print(" ")
-    if b_print_output:
-        print("+=================================================================+")
-        print("|              DETERMINE IF FAST DATABASE IS CURRENT              |")
-        print("|                Created by Andy Carter, PE of                    |")
-        print("|             Center for Water and the Environment                |")
-        print("|                 University of Texas at Austin                   |")
-        print("+-----------------------------------------------------------------+")
-        print("  ---(c) INPUT GLOBAL CONFIGURATION FILE: " + str_config_file_path)
-        print("  ---[r] PRINT OUTPUT: " + str(b_print_output))
-        print("===================================================================")
-    else:
-        print('Step 0: Determine if FAST database is current')
-        
-    # --- Read variables from config.ini ---
-    config = configparser.ConfigParser()
-    config.read(str_config_file_path)
-    
-    if 'database' in config:
-        section = config['database']
-        
-        # Database connection configuration
-        dict_db_params = {
-            'host': section.get('host', ''),
-            'dbname': section.get('dbname', ''),
-            'user': section.get('username', ''),
-            'password': section.get('password', '')
-        }
-        
-        # Overwrite with environment variable if password is 'xxx'
-        if dict_db_params['password'] == 'xxx':
-            dict_db_params['password'] = os.environ.get('DB_PASSWORD', '')
-    else:
-        raise KeyError("Missing [database] section in config file")
-    
-    # -- From the s3 bucket,determine the current NWM forecast
+    _schema = (
+        getattr(cfg, "sql", None) and getattr(cfg.sql, "input_schema", None)
+    ) or (
+        getattr(cfg, "download", None) and getattr(cfg.download, "input_schema", None)
+    ) or "public"
+
+
+    logger.info("Step 0: Determine if FAST database is current") if not print_output else logger.debug("""
++=================================================================+
+|              DETERMINE IF FAST DATABASE IS CURRENT              |
+|                Created by Andy Carter, PE of                    |
+|             Center for Water and the Environment                |
+|                 University of Texas at Austin                   |
++-----------------------------------------------------------------+
+  ---(c) Loaded config for DB: {} @ {} @ {}
+  ---[r] PRINT OUTPUT: {}
+===================================================================""".format(cfg.database.dbname, cfg.database.host, _workflow_id, print_output))
+
     result = fn_determine_current_forecast()
-    str_iso8601_time = fn_parse_iso8601_date_from_s3(result[0])
-    if b_print_output:
-        print(f'  --  Current NWM forecast:  {str_iso8601_time}')
-    
-    # -- From the FAST database, determine the last update time
-    df_current_forecast = fn_get_dataframe_from_postgresql('t_current_forecast', dict_db_params)
-    str_current_db_forecast = df_current_forecast.iloc[0]['model_run_time']
-    if b_print_output:
-        print(f'  -- Current FAST forecast: {str_current_db_forecast}')
-    
-    if str_iso8601_time != str_current_db_forecast:
-        print('  -- Update of FAST database required')
-        b_needs_update = True
+    str_iso8601_time = fn_parse_iso8601_date_from_s3(result[0]) if result else None
+    if print_output:
+        logger.debug(f'Current NWM forecast:  {str_iso8601_time}')
+
+
+    db_conn_info = resolve_db_credentials(cfg.database)
+    df_current = fn_get_dataframe_from_postgresql(f'{_schema}.t_current_forecast', db_conn_info, workflow_id=_workflow_id)
+
+    if df_current.empty:
+        logger.info(f"t_current_forecast is empty for workflow_id={_workflow_id!r} — update required.")
+        return True
+
+    db_model_time = df_current.iloc[0]['model_run_time']
+    if print_output:
+        logger.debug(f'Current FAST forecast: {db_model_time}, workflow_id={_workflow_id!r}')
+
+    if str_iso8601_time != db_model_time:
+        logger.info(f'Update of FAST database required. Current: {db_model_time}')
+        return True
     else:
-        print('  -- FAST database is current')
-        
-    return(b_needs_update)
-# .........................................................
+        logger.info('FAST database is current')
+        return False
 
 
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 if __name__ == '__main__':
+    import argparse
+    import time
+    import datetime
 
-    flt_start_run = time.time()
-    
-    parser = argparse.ArgumentParser(description='========= DETERMINE IF FAST DATABASE IS CURRENT =========')
-    
-    parser.add_argument('-c',
-                        dest = "str_config_file_path",
-                        help=r'REQUIRED: Global configuration filepath Example:C:\Users\civil\dev\fast_realtime\src\config_realtime.ini',
-                        required=True,
-                        metavar='FILE',
-                        type=lambda x: is_valid_file(parser, x))
-    
-    parser.add_argument('-r',
-                    dest = "b_print_output",
-                    help=r'OPTIONAL: Print output messages Default: True',
-                    required=False,
-                    default=True,
-                    metavar='T/F',
-                    type=fn_str_to_bool)
-    
-    args = vars(parser.parse_args())
-    
-    str_config_file_path = args['str_config_file_path']
-    b_print_output = args['b_print_output']
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-c", "--config", required=True)
+    parser.add_argument("--quiet", action="store_true")
+    args = parser.parse_args()
 
-    b_needs_update = fn_determine_if_database_current(str_config_file_path, b_print_output)
-
-    flt_end_run = time.time()
-    flt_time_pass = (flt_end_run - flt_start_run) // 1
-    time_pass = datetime.timedelta(seconds=flt_time_pass)
-    
-    print('Compute Time: ' + str(time_pass))
- #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    cfg = load_config(args.config)
+    start = time.time()
+    fn_determine_if_database_current(cfg, print_output=not args.quiet)
+    end = time.time()
+    logger.info(f"Compute Time: {datetime.timedelta(seconds=int(end - start))}")
